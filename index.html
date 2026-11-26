@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>용돈 일일 사용액 계산기</title>
+<meta name="theme-color" content="#3b6cf6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="용돈계산기">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root{
     --bg:#f4f6fb; --card:#fff; --text:#1c2333; --sub:#6b7488; --line:#e3e7f0;
@@ -202,6 +209,15 @@ $("incPayday").checked = load("pm_incPayday","0")==="1";
   });
 });
 render();
+
+// PWA: 서비스 워커 등록
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+// 앱을 다시 열었을 때 날짜가 바뀌었으면 갱신
+document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
 </script>
 </body>
 </html>
