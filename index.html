@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>용돈 일일 사용액 계산기</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#fff; --text:#1c2333; --sub:#6b7488; --line:#e3e7f0;
+    --accent:#3b6cf6; --accent-soft:#e8eefe; --ok:#1a9b5f; --warn:#d9822b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12151c; --card:#1b2029; --text:#e8ecf5; --sub:#98a1b5; --line:#2b3240; --accent:#6b93ff; --accent-soft:#222c47; --ok:#4cc58a; --warn:#f0a050; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI","Malgun Gothic",sans-serif;line-height:1.5}
+  .wrap{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+  h1{font-size:20px;margin:8px 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .hero{text-align:center}
+  .hero .label{color:var(--sub);font-size:14px}
+  .hero .big{font-size:40px;font-weight:700;color:var(--accent);margin:4px 0;letter-spacing:-1px}
+  .hero .note{font-size:13px;color:var(--sub)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--accent-soft);border-radius:10px;padding:12px;text-align:center}
+  .stat .k{font-size:12px;color:var(--sub)}
+  .stat .v{font-size:18px;font-weight:600;margin-top:2px}
+  label{display:block;font-size:13px;color:var(--sub);margin:0 0 4px}
+  input[type=number],input[type=date],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:16px;font-family:inherit}
+  textarea{font-size:13px;min-height:90px;resize:vertical}
+  .row{margin-bottom:12px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);margin:6px 0}
+  .chk input{width:18px;height:18px}
+  details summary{cursor:pointer;font-size:14px;color:var(--sub)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+  th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--sub);font-weight:500;font-size:12px}
+  tr.today td{background:var(--accent-soft);font-weight:600}
+  tr.off td{color:var(--sub)}
+  .tag{font-size:11px;color:var(--warn)}
+  .hint{font-size:12px;color:var(--sub);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💰 용돈 일일 사용 가능액</h1>
+
+  <div class="card hero">
+    <div class="label">오늘(<span id="todayText"></span>) 포함 하루 사용 가능 금액</div>
+    <div class="big" id="daily">-</div>
+    <div class="note" id="heroNote"></div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="stat"><div class="k">다음 용돈 갱신일</div><div class="v" id="payday">-</div></div>
+      <div class="stat"><div class="k">남은 영업일</div><div class="v" id="days">-</div></div>
+    </div>
+    <div class="hint" id="paydayNote"></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label for="balance">현재 남은 용돈 (원)</label>
+      <input id="balance" type="number" inputmode="numeric" min="0" placeholder="예: 300000">
+    </div>
+    <div class="chk"><input id="exHoliday" type="checkbox" checked><label for="exHoliday" style="margin:0;color:inherit">공휴일도 영업일에서 제외</label></div>
+    <div class="chk"><input id="incPayday" type="checkbox"><label for="incPayday" style="margin:0;color:inherit">갱신일 당일도 영업일로 포함</label></div>
+    <details style="margin-top:10px">
+      <summary>고급 설정 (기준일 변경 · 공휴일 목록)</summary>
+      <div class="row" style="margin-top:10px">
+        <label for="baseDate">기준일 (비우면 오늘)</label>
+        <input id="baseDate" type="date">
+      </div>
+      <div class="row">
+        <label for="holidays">공휴일 목록 (YYYY-MM-DD, 줄바꿈/쉼표 구분)</label>
+        <textarea id="holidays"></textarea>
+        <div class="hint">기본값은 2026~2027년 예상 공휴일입니다. 임시공휴일 등은 직접 추가/수정하세요.</div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div style="font-size:14px;font-weight:600">남은 영업일 일정</div>
+    <table>
+      <thead><tr><th>날짜</th><th>일 사용 가능액</th><th>이 날까지 누적</th></tr></thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const DEFAULT_HOLIDAYS = [
+  // 2026
+  "2026-01-01","2026-02-16","2026-02-17","2026-02-18","2026-03-02","2026-05-01","2026-05-05","2026-05-25",
+  "2026-06-03","2026-08-17","2026-09-24","2026-09-25","2026-09-26","2026-10-05","2026-10-09","2026-12-25",
+  // 2027
+  "2027-01-01","2027-02-08","2027-02-09","2027-03-01","2027-05-05","2027-05-13","2027-08-16",
+  "2027-09-14","2027-09-15","2027-09-16","2027-10-04","2027-10-11","2027-12-27"
+];
+const PAYDAY = 21;
+const $ = id => document.getElementById(id);
+const DOW = ["일","월","화","수","목","금","토"];
+const won = n => Math.floor(n).toLocaleString("ko-KR") + "원";
+
+function fmt(d){ // YYYY-MM-DD (로컬)
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function parse(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function label(d){ return `${d.getMonth()+1}/${d.getDate()}(${DOW[d.getDay()]})`; }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+
+function load(k,def){ try{ const v=localStorage.getItem(k); return v===null?def:v; }catch(e){ return def; } }
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+let holidaySet = new Set();
+let useHoliday = true;
+function isBusiness(d){
+  const w = d.getDay();
+  if (w===0 || w===6) return false;
+  if (useHoliday && holidaySet.has(fmt(d))) return false;
+  return true;
+}
+// 해당 월 21일 → 영업일이 아니면 앞(이전) 영업일로
+function adjustedPayday(y,m){
+  let d = new Date(y,m,PAYDAY);
+  while(!isBusiness(d)) d = addDays(d,-1);
+  return d;
+}
+function nextPayday(today){
+  let p = adjustedPayday(today.getFullYear(), today.getMonth());
+  if (p < today) p = adjustedPayday(today.getFullYear(), today.getMonth()+1);
+  return p;
+}
+
+function render(){
+  useHoliday = $("exHoliday").checked;
+  const lines = $("holidays").value.split(/[\s,]+/).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s));
+  holidaySet = new Set(lines);
+
+  const baseVal = $("baseDate").value;
+  const today = baseVal ? parse(baseVal) : (()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());})();
+  $("todayText").textContent = `${today.getMonth()+1}/${today.getDate()}(${DOW[today.getDay()]})`;
+
+  const pay = nextPayday(today);
+  const incPay = $("incPayday").checked;
+  $("payday").textContent = `${pay.getFullYear()}.${pay.getMonth()+1}.${pay.getDate()} (${DOW[pay.getDay()]})`;
+  const nominal = new Date(pay.getFullYear(), pay.getMonth(), PAYDAY);
+  // 명목 21일과 다르면 안내
+  const sameNominal = fmt(nominal)===fmt(pay);
+  $("paydayNote").textContent = sameNominal
+    ? "21일이 영업일이라 그대로 갱신됩니다."
+    : `21일(${DOW[nominal.getDay()]})이 휴무일이라 앞 영업일로 당겨졌습니다.`;
+
+  // 오늘 ~ 갱신일 전날(옵션: 당일 포함) 영업일 수집
+  const last = incPay ? pay : addDays(pay,-1);
+  const bdays = [];
+  for(let d=new Date(today); d<=last; d=addDays(d,1)){ if(isBusiness(d)) bdays.push(new Date(d)); }
+  const n = bdays.length;
+  $("days").textContent = n + "일";
+
+  const raw = $("balance").value;
+  const bal = raw===""? null : Number(raw);
+  save("pm_balance", raw);
+
+  if (n===0){
+    $("daily").textContent = "-";
+    $("heroNote").textContent = "남은 영업일이 없습니다. 갱신일이 곧 다가옵니다!";
+    $("list").innerHTML = "";
+    return;
+  }
+  if (bal===null || isNaN(bal)){
+    $("daily").textContent = "잔액 입력";
+    $("heroNote").textContent = `영업일 ${n}일 남음 · 남은 용돈을 입력하면 계산됩니다`;
+  } else {
+    const per = bal / n;
+    $("daily").textContent = won(per);
+    $("heroNote").textContent = `${won(bal)} ÷ 영업일 ${n}일` + (isBusiness(today) ? "" : " · 오늘은 휴무일이지만 일정은 다음 영업일부터 소진");
+  }
+
+  const per = (bal===null||isNaN(bal)) ? null : bal/n;
+  const todayStr = fmt(today);
+  $("list").innerHTML = bdays.map((d,i)=>{
+    const cls = fmt(d)===todayStr ? "today" : "";
+    return `<tr class="${cls}"><td>${label(d)}${cls?' <span class="tag">오늘</span>':''}</td>` +
+      `<td>${per===null?"-":won(per)}</td><td>${per===null?"-":won(per*(i+1))}</td></tr>`;
+  }).join("");
+}
+
+// 초기화
+$("holidays").value = load("pm_holidays", DEFAULT_HOLIDAYS.join("\n"));
+$("balance").value = load("pm_balance","");
+$("exHoliday").checked = load("pm_exHoliday","1")==="1";
+$("incPayday").checked = load("pm_incPayday","0")==="1";
+["balance","baseDate","holidays","exHoliday","incPayday"].forEach(id=>{
+  $(id).addEventListener("input",()=>{
+    save("pm_holidays",$("holidays").value);
+    save("pm_exHoliday",$("exHoliday").checked?"1":"0");
+    save("pm_incPayday",$("incPayday").checked?"1":"0");
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>
