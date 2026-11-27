@@ -70,7 +70,7 @@
   <div class="card">
     <div class="row">
       <label for="balance">현재 남은 용돈 (원)</label>
-      <input id="balance" type="number" inputmode="numeric" min="0" placeholder="예: 300000">
+      <input id="balance" type="text" inputmode="numeric" autocomplete="off" placeholder="예: 300,000">
     </div>
     <div class="chk"><input id="exHoliday" type="checkbox" checked><label for="exHoliday" style="margin:0;color:inherit">공휴일도 영업일에서 제외</label></div>
     <div class="chk"><input id="incPayday" type="checkbox"><label for="incPayday" style="margin:0;color:inherit">갱신일 당일도 영업일로 포함</label></div>
@@ -167,7 +167,7 @@ function render(){
   const n = bdays.length;
   $("days").textContent = n + "일";
 
-  const raw = $("balance").value;
+  const raw = $("balance").value.replace(/[^\d]/g,"");
   const bal = raw===""? null : Number(raw);
   save("pm_balance", raw);
 
@@ -197,7 +197,21 @@ function render(){
 
 // 초기화
 $("holidays").value = load("pm_holidays", DEFAULT_HOLIDAYS.join("\n"));
+// 금액 입력: 숫자만 남기고 천 단위 콤마 표시 (커서 위치 유지)
+function formatMoneyInput(el){
+  const before = el.value;
+  const caret = el.selectionStart ?? before.length;
+  const digitsBeforeCaret = before.slice(0,caret).replace(/[^\d]/g,"").length;
+  const digits = before.replace(/[^\d]/g,"").replace(/^0+(?=\d)/,"");
+  const out = digits==="" ? "" : Number(digits).toLocaleString("ko-KR");
+  el.value = out;
+  let pos = 0, seen = 0;
+  while(pos < out.length && seen < digitsBeforeCaret){ if(/\d/.test(out[pos])) seen++; pos++; }
+  try{ el.setSelectionRange(pos,pos); }catch(e){}
+}
+$("balance").addEventListener("input", e => formatMoneyInput(e.target));
 $("balance").value = load("pm_balance","");
+formatMoneyInput($("balance"));
 $("exHoliday").checked = load("pm_exHoliday","1")==="1";
 $("incPayday").checked = load("pm_incPayday","0")==="1";
 ["balance","baseDate","holidays","exHoliday","incPayday"].forEach(id=>{
