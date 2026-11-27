@@ -1,5 +1,5 @@
 // 앱 셸 캐시. 파일을 수정하면 VERSION을 올려 캐시를 갱신하세요.
-const VERSION = "pocketmoney-v2";
+const VERSION = "pocketmoney-v3";
 const ASSETS = [
   "./",
   "./index.html",
