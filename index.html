@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>용돈 일일 사용액 계산기</title>
+<title>용돈계산기</title>
 <meta name="theme-color" content="#3b6cf6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,13 +39,6 @@
   .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);margin:6px 0}
   .chk input{width:18px;height:18px}
   details summary{cursor:pointer;font-size:14px;color:var(--sub)}
-  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
-  th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line)}
-  th:first-child,td:first-child{text-align:left}
-  th{color:var(--sub);font-weight:500;font-size:12px}
-  tr.today td{background:var(--accent-soft);font-weight:600}
-  tr.off td{color:var(--sub)}
-  .tag{font-size:11px;color:var(--warn)}
   .hint{font-size:12px;color:var(--sub);margin-top:6px}
   .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
   .quick button{padding:12px 0;border:1px solid var(--line);border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;touch-action:manipulation}
@@ -56,7 +49,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>💰 용돈 일일 사용 가능액</h1>
+  <h1>💰 용돈계산기</h1>
 
   <div class="card hero">
     <div class="label">오늘(<span id="todayText"></span>) 포함 하루 사용 가능 금액</div>
@@ -103,13 +96,6 @@
     </details>
   </div>
 
-  <div class="card">
-    <div style="font-size:14px;font-weight:600">남은 영업일 일정</div>
-    <table>
-      <thead><tr><th>날짜</th><th>일 사용 가능액</th><th>이 날까지 누적</th></tr></thead>
-      <tbody id="list"></tbody>
-    </table>
-  </div>
 </div>
 
 <script>
@@ -189,7 +175,6 @@ function render(){
   if (n===0){
     $("daily").textContent = "-";
     $("heroNote").textContent = "남은 영업일이 없습니다. 갱신일이 곧 다가옵니다!";
-    $("list").innerHTML = "";
     return;
   }
   if (bal===null || isNaN(bal)){
@@ -200,14 +185,6 @@ function render(){
     $("daily").textContent = won(per);
     $("heroNote").textContent = `${won(bal)} ÷ 영업일 ${n}일` + (isBusiness(today) ? "" : " · 오늘은 휴무일이지만 일정은 다음 영업일부터 소진");
   }
-
-  const per = (bal===null||isNaN(bal)) ? null : bal/n;
-  const todayStr = fmt(today);
-  $("list").innerHTML = bdays.map((d,i)=>{
-    const cls = fmt(d)===todayStr ? "today" : "";
-    return `<tr class="${cls}"><td>${label(d)}${cls?' <span class="tag">오늘</span>':''}</td>` +
-      `<td>${per===null?"-":won(per)}</td><td>${per===null?"-":won(per*(i+1))}</td></tr>`;
-  }).join("");
 }
 
 // 초기화
@@ -234,9 +211,8 @@ $("quick").addEventListener("click", e => {
   el.value = next ? next.toLocaleString("ko-KR") : "";
   el.dispatchEvent(new Event("input", {bubbles:true}));
 });
-$("balance").value = load("pm_balance","");
-formatMoneyInput($("balance"));
-$("exHoliday").checked = load("pm_exHoliday","1")==="1";
+$("balance").value = load("pm_balance","") || "300000"; // 저장값이 없으면 기본 300,000원
+formatMoneyInput($("balance"));$("exHoliday").checked = load("pm_exHoliday","1")==="1";
 $("incPayday").checked = load("pm_incPayday","0")==="1";
 ["balance","baseDate","holidays","exHoliday","incPayday"].forEach(id=>{
   $(id).addEventListener("input",()=>{
